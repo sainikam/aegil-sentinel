@@ -41,5 +41,3 @@ The system integrates **AI-powered detection**, **real-time communication**, and
 - Frontend: Vercel  
 
 ---
-
-## 📂 Project Structure
