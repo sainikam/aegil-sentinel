@@ -1,0 +1,20 @@
+// dashboard with Leaflet map and socket.io real-time updates
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const user = getUser(); if(!user){ window.location.href='/index.html'; return; }
+  document.getElementById('userLabel').textContent = user.name;
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{ localStorage.clear(); window.location.href='/index.html'; });
+  const alerts = document.getElementById('alerts'); const tbody = document.getElementById('incidentsTbody');
+  const map = L.map('map').setView([20.59,78.96], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap contributors' }).addTo(map);
+  const markers = {};
+  function addMarker(inc){ if(!inc.location) return; const parts = inc.location.split(',').map(s=>parseFloat(s.trim())); if(parts.length!==2 || parts.some(isNaN)) return; const key = inc._id; if(markers[key]) { markers[key].setLatLng(parts); return; } markers[key] = L.marker(parts).addTo(map).bindPopup(`<b>${inc.title}</b><br/>${inc.description}`); }
+  async function loadIncidents(){ try{ const data = await apiFetch('/incidents'); tbody.innerHTML=''; data.forEach(inc=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class="py-2">${inc._id}</td><td class="py-2">${inc.title}</td><td class="py-2">${inc.description}</td><td class="py-2">${inc.location||''}</td><td class="py-2">${inc.reporter.name}</td><td class="py-2">${inc.status}</td><td class="py-2">${incActions(inc)}</td>`; tbody.appendChild(tr); addMarker(inc); }); attachActions(); }catch(e){ showAlert(alerts,e.message,'error'); } }
+  function incActions(inc){ const u=getUser(); let html=''; if(u && u.role==='admin') html += `<button data-id="${inc._id}" class="deleteBtn px-2 py-1 rounded bg-red-100">Delete</button>`; html += ` <select data-id="${inc._id}" class="statusSel"><option value="reported">reported</option><option value="investigating">investigating</option><option value="resolved">resolved</option></select>`; return html; }
+  function attachActions(){ document.querySelectorAll('.deleteBtn').forEach(btn=>btn.addEventListener('click', async ()=>{ if(!confirm('Delete incident?')) return; try{ await apiFetch('/incidents/'+btn.dataset.id,{ method:'DELETE' }); showAlert(alerts,'Deleted'); loadIncidents(); }catch(e){ showAlert(alerts,e.message,'error'); }})); document.querySelectorAll('.statusSel').forEach(sel=>sel.addEventListener('change', async ()=>{ try{ await apiFetch('/incidents/'+sel.dataset.id,{ method:'PATCH', body: JSON.stringify({ status: sel.value }) }); showAlert(alerts,'Status updated'); loadIncidents(); }catch(e){ showAlert(alerts,e.message,'error'); }})); }
+  document.getElementById('incidentForm').addEventListener('submit', async e=>{ e.preventDefault(); const f=e.target; try{ await apiFetch('/incidents',{ method:'POST', body: JSON.stringify({ title: f.title.value, description: f.description.value, location: f.location.value }) }); showAlert(alerts,'Reported'); f.reset(); loadIncidents(); }catch(e){ showAlert(alerts,e.message,'error'); } });
+  document.getElementById('simulateAI').addEventListener('click', async ()=>{ try{ const demo = await apiFetch('/ai/simulate', { method:'POST', body: JSON.stringify({ location: '13.0827,80.2707', caption: 'Person crossing fence', severity: 'high' }) }); showAlert(alerts,'AI flagged incident: '+demo.title); loadIncidents(); }catch(e){ showAlert(alerts,e.message,'error'); } });
+  const socketScript = document.createElement('script'); socketScript.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js'; document.body.appendChild(socketScript);
+  socketScript.onload = ()=>{ const socket = io(API_BASE); socket.on('connect', ()=> console.log('socket connected')); socket.on('incident:created', inc => { showAlert(alerts,'Real-time: '+inc.title); addMarker(inc); loadIncidents(); }); };
+  async function loadAnalytics(){ try{ const a = await apiFetch('/analytics'); document.getElementById('analytics').innerHTML = `<div>Incidents last 7 days: ${a.last7}</div><div>Top sector: ${a.topSector}</div>`; }catch(e){} }
+  await loadIncidents(); await loadAnalytics();
+});

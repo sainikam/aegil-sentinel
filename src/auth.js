@@ -1,0 +1,6 @@
+document.addEventListener('DOMContentLoaded', ()=>{
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  if(loginForm){ loginForm.addEventListener('submit', async e=>{ e.preventDefault(); const email=loginForm.email.value,password=loginForm.password.value; try{ const data=await apiFetch('/auth/login',{ method:'POST', body: JSON.stringify({ email, password }) }); if(data.token){ localStorage.setItem('aegis_token',data.token); localStorage.setItem('aegis_user', JSON.stringify(data.user)); window.location.href='dashboard.html'; } else alert(data.message||'Login failed'); }catch(err){ alert(err.message||'Login error'); } }); }
+  if(registerForm){ registerForm.addEventListener('submit', async e=>{ e.preventDefault(); const name=registerForm.name.value,email=registerForm.email.value,password=registerForm.password.value; try{ const data=await apiFetch('/auth/register',{ method:'POST', body: JSON.stringify({ name, email, password }) }); if(data.token){ localStorage.setItem('aegis_token',data.token); localStorage.setItem('aegis_user', JSON.stringify(data.user)); window.location.href='dashboard.html'; } else alert(data.message||'Register failed'); }catch(err){ alert(err.message||'Register error'); } }); }
+});

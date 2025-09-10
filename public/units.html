@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Units - Aegis Sentinel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <h1 class="text-2xl font-bold mb-4">Manage Units</h1>
+  
+  <!-- Add Unit Form -->
+  <form id="unitForm" class="bg-white p-4 shadow rounded mb-6">
+    <input type="text" id="name" placeholder="Unit Name" class="border p-2 mr-2">
+    <input type="text" id="location" placeholder="Location" class="border p-2 mr-2">
+    <select id="status" class="border p-2 mr-2">
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Add Unit</button>
+  </form>
+
+  <!-- Units Table -->
+  <table class="w-full bg-white shadow rounded">
+    <thead>
+      <tr>
+        <th class="border px-4 py-2">Name</th>
+        <th class="border px-4 py-2">Location</th>
+        <th class="border px-4 py-2">Status</th>
+        <th class="border px-4 py-2">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="unitsTable"></tbody>
+  </table>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const API = 'http://localhost:4000';
+
+    async function loadUnits() {
+      const res = await fetch(`${API}/units`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const tbody = document.getElementById('unitsTable');
+      tbody.innerHTML = '';
+      data.forEach(u => {
+        tbody.innerHTML += `
+          <tr>
+            <td class="border px-4 py-2">${u.name}</td>
+            <td class="border px-4 py-2">${u.location}</td>
+            <td class="border px-4 py-2">${u.status}</td>
+            <td class="border px-4 py-2">
+              <button onclick="deleteUnit('${u._id}')" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    async function deleteUnit(id) {
+      await fetch(`${API}/units/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      loadUnits();
+    }
+
+    document.getElementById('unitForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const location = document.getElementById('location').value;
+      const status = document.getElementById('status').value;
+      await fetch(`${API}/units`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, location, status })
+      });
+      e.target.reset();
+      loadUnits();
+    });
+
+    loadUnits();
+  </script>
+</body>
+</html>
+
